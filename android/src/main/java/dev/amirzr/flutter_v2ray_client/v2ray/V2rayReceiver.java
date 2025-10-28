@@ -15,13 +15,38 @@ public class V2rayReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         try {
+            // Validate inputs
+            if (intent == null) {
+                Log.w("V2rayReceiver", "Received null intent");
+                return;
+            }
+
+            if (intent.getExtras() == null) {
+                Log.w("V2rayReceiver", "Intent has no extras");
+                return;
+            }
+
+            if (vpnStatusSink == null) {
+                Log.w("V2rayReceiver", "vpnStatusSink is null, cannot send status");
+                return;
+            }
+
             ArrayList<String> list = new ArrayList<>();
-            list.add(intent.getExtras().getString("DURATION"));
+            String duration = intent.getExtras().getString("DURATION");
+            list.add(duration != null ? duration : "00:00:00");
             list.add(String.valueOf(intent.getLongExtra("UPLOAD_SPEED", 0)));
             list.add(String.valueOf(intent.getLongExtra("DOWNLOAD_SPEED", 0)));
             list.add(String.valueOf(intent.getLongExtra("UPLOAD_TRAFFIC", 0)));
             list.add(String.valueOf(intent.getLongExtra("DOWNLOAD_TRAFFIC", 0)));
-            list.add(intent.getExtras().getSerializable("STATE").toString().substring(6));
+
+            Object state = intent.getExtras().getSerializable("STATE");
+            if (state != null) {
+                String stateStr = state.toString();
+                list.add(stateStr.length() > 6 ? stateStr.substring(6) : stateStr);
+            } else {
+                list.add("DISCONNECTED");
+            }
+
             vpnStatusSink.success(list);
         } catch (Exception e) {
             Log.e("V2rayReceiver", "onReceive failed", e);

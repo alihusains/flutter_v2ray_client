@@ -77,11 +77,15 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
             AppConfigs.V2RAY_CONFIG = null;
         } else if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.MEASURE_DELAY)) {
             new Thread(() -> {
-                String packageName = getPackageName();
-                Intent sendB = new Intent(packageName + ".CONNECTED_V2RAY_SERVER_DELAY");
-                sendB.setPackage(packageName);
-                sendB.putExtra("DELAY", String.valueOf(V2rayCoreManager.getInstance().getConnectedV2rayServerDelay()));
-                sendBroadcast(sendB);
+                try {
+                    String packageName = getPackageName();
+                    Intent sendB = new Intent(packageName + ".CONNECTED_V2RAY_SERVER_DELAY");
+                    sendB.setPackage(packageName);
+                    sendB.putExtra("DELAY", String.valueOf(V2rayCoreManager.getInstance().getConnectedV2rayServerDelay()));
+                    sendBroadcast(sendB);
+                } catch (Exception e) {
+                    Log.w("V2rayVPNService", "Failed to send delay broadcast", e);
+                }
             }, "MEASURE_CONNECTED_V2RAY_SERVER_DELAY").start();
         } else {
             Log.w("V2rayVPNService", "Unknown command received, stopping service");
@@ -262,6 +266,45 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
 
     @Override
     public void onDestroy() {
+        Log.i("V2rayVPNService", "onDestroy called - cleaning up resources");
+        isRunning = false;
+        
+        // Stop the V2ray core
+        try {
+            if (V2rayCoreManager.getInstance().isV2rayCoreRunning()) {
+                V2rayCoreManager.getInstance().stopCore();
+            }
+        } catch (Exception e) {
+            Log.e("V2rayVPNService", "Error stopping V2ray core in onDestroy", e);
+        }
+        
+        // Stop foreground service and remove notification
+        try {
+            stopForeground(true);
+        } catch (Exception e) {
+            Log.e("V2rayVPNService", "Error stopping foreground in onDestroy", e);
+        }
+        
+        // Destroy tun2socks process
+        try {
+            if (process != null) {
+                process.destroy();
+                process = null;
+            }
+        } catch (Exception e) {
+            Log.e("V2rayVPNService", "Error destroying process in onDestroy", e);
+        }
+        
+        // Close VPN interface
+        try {
+            if (mInterface != null) {
+                mInterface.close();
+                mInterface = null;
+            }
+        } catch (Exception e) {
+            Log.e("V2rayVPNService", "Error closing VPN interface in onDestroy", e);
+        }
+        
         super.onDestroy();
     }
 

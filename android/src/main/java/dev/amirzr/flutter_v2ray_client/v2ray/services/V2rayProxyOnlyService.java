@@ -61,11 +61,15 @@ public class V2rayProxyOnlyService extends Service implements V2rayServicesListe
             AppConfigs.V2RAY_CONFIG = null;
         } else if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.MEASURE_DELAY)) {
             new Thread(() -> {
-                String packageName = getPackageName();
-                Intent sendB = new Intent(packageName + ".CONNECTED_V2RAY_SERVER_DELAY");
-                sendB.setPackage(packageName);
-                sendB.putExtra("DELAY", String.valueOf(V2rayCoreManager.getInstance().getConnectedV2rayServerDelay()));
-                sendBroadcast(sendB);
+                try {
+                    String packageName = getPackageName();
+                    Intent sendB = new Intent(packageName + ".CONNECTED_V2RAY_SERVER_DELAY");
+                    sendB.setPackage(packageName);
+                    sendB.putExtra("DELAY", String.valueOf(V2rayCoreManager.getInstance().getConnectedV2rayServerDelay()));
+                    sendBroadcast(sendB);
+                } catch (Exception e) {
+                    Log.w("V2rayProxyOnlyService", "Failed to send delay broadcast", e);
+                }
             }, "MEASURE_CONNECTED_V2RAY_SERVER_DELAY").start();
         } else {
             Log.w("V2rayProxyOnlyService", "Unknown command received, stopping service");

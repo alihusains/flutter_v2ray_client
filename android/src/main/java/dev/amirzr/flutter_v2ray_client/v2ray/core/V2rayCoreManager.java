@@ -95,7 +95,11 @@ public final class V2rayCoreManager {
                 connection_info_intent.putExtra("DOWNLOAD_SPEED", downloadSpeed);
                 connection_info_intent.putExtra("UPLOAD_TRAFFIC", totalUpload);
                 connection_info_intent.putExtra("DOWNLOAD_TRAFFIC", totalDownload);
-                context.sendBroadcast(connection_info_intent);
+                try {
+                    context.sendBroadcast(connection_info_intent);
+                } catch (Exception e) {
+                    Log.w("V2rayCoreManager", "Failed to send connection info broadcast", e);
+                }
 
                 Log.d(V2rayCoreManager.class.getSimpleName(), "makeDurationTimer => " + SERVICE_DURATION);
             }
@@ -261,13 +265,13 @@ public final class V2rayCoreManager {
             connection_info_intent.putExtra("STATE", V2rayCoreManager.getInstance().V2RAY_STATE);
             connection_info_intent.putExtra("DURATION", SERVICE_DURATION);
             connection_info_intent.putExtra("UPLOAD_SPEED", uploadSpeed);
-            connection_info_intent.putExtra("DOWNLOAD_SPEED", uploadSpeed);
-            connection_info_intent.putExtra("UPLOAD_TRAFFIC", uploadSpeed);
-            connection_info_intent.putExtra("DOWNLOAD_TRAFFIC", uploadSpeed);
+            connection_info_intent.putExtra("DOWNLOAD_SPEED", downloadSpeed);
+            connection_info_intent.putExtra("UPLOAD_TRAFFIC", totalUpload);
+            connection_info_intent.putExtra("DOWNLOAD_TRAFFIC", totalDownload);
             try {
                 context.sendBroadcast(connection_info_intent);
             } catch (Exception e) {
-                // ignore
+                Log.w("V2rayCoreManager", "Failed to send disconnected broadcast", e);
             }
         }
         if (countDownTimer != null) {
