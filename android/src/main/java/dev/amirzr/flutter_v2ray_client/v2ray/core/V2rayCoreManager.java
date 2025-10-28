@@ -217,11 +217,19 @@ public final class V2rayCoreManager {
 
     public void stopCore() {
         try {
-            NotificationManager notificationManager = (NotificationManager) v2rayServicesListener.getService()
-                    .getSystemService(Context.NOTIFICATION_SERVICE);
-            if (notificationManager != null) {
-                notificationManager.cancel(NOTIFICATION_ID);
+            // Safely cancel notification - handle cases where service might be null
+            if (v2rayServicesListener != null && v2rayServicesListener.getService() != null) {
+                NotificationManager notificationManager = (NotificationManager) v2rayServicesListener.getService()
+                        .getSystemService(Context.NOTIFICATION_SERVICE);
+                if (notificationManager != null) {
+                    notificationManager.cancel(NOTIFICATION_ID);
+                }
             }
+        } catch (Exception e) {
+            Log.w("V2rayCoreManager", "Failed to cancel notification", e);
+        }
+        
+        try {
             if (isV2rayCoreRunning()) {
                 if (coreController != null) {
                     coreController.stopLoop();
@@ -269,19 +277,27 @@ public final class V2rayCoreManager {
 
     private String createNotificationChannelID(String appName) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager notificationManager = (NotificationManager) v2rayServicesListener.getService()
-                    .getSystemService(Context.NOTIFICATION_SERVICE);
+            String channelId = "A_FLUTTER_V2RAY_SERVICE_CH_ID"; // default and constant ID
+            try {
+                if (v2rayServicesListener == null || v2rayServicesListener.getService() == null) {
+                    return channelId;
+                }
 
-            String channelId = "A_FLUTTER_V2RAY_SERVICE_CH_ID";
-            String channelName = appName + " Background Service";
-            NotificationChannel channel = new NotificationChannel(channelId, channelName,
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription(channelName);
-            channel.setLightColor(Color.DKGRAY);
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+                NotificationManager notificationManager = (NotificationManager) v2rayServicesListener.getService()
+                        .getSystemService(Context.NOTIFICATION_SERVICE);
 
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
+                String channelName = appName + " Background Service";
+                NotificationChannel channel = new NotificationChannel(channelId, channelName,
+                        NotificationManager.IMPORTANCE_DEFAULT);
+                channel.setDescription(channelName);
+                channel.setLightColor(Color.DKGRAY);
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+                if (notificationManager != null) {
+                    notificationManager.createNotificationChannel(channel);
+                }
+            } catch (Exception e) {
+                Log.w("V2rayCoreManager", "Failed to create notification channel", e);
             }
 
             return channelId;
@@ -333,19 +349,24 @@ public final class V2rayCoreManager {
         PendingIntent pendingIntent = PendingIntent.getService(
                 context, 0, stopIntent, flags);
 
-        // Build the notification
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, notificationChannelID)
-                .setSmallIcon(v2rayConfig.APPLICATION_ICON)
-                .setContentTitle(v2rayConfig.REMARK)
-                .addAction(0, v2rayConfig.NOTIFICATION_DISCONNECT_BUTTON_NAME, notificationContentPendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setShowWhen(false)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(notificationContentPendingIntent)
-                .setSilent(true)
-                .setOngoing(true);
+        try {
+            // Build the notification
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, notificationChannelID)
+                    .setSmallIcon(v2rayConfig.APPLICATION_ICON)
+                    .setContentTitle(v2rayConfig.REMARK)
+                    .addAction(0, v2rayConfig.NOTIFICATION_DISCONNECT_BUTTON_NAME, notificationContentPendingIntent)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                    .setShowWhen(false)
+                    .setOnlyAlertOnce(true)
+                    .setContentIntent(notificationContentPendingIntent)
+                    .setSilent(true)
+                    .setOngoing(true);
 
-        context.startForeground(NOTIFICATION_ID, notificationBuilder.build());
+            context.startForeground(NOTIFICATION_ID, notificationBuilder.build());
+        } catch (Exception e) {
+            Log.w("V2rayCoreManager", "Failed to show notification, continuing without notification", e);
+            // VPN/Proxy continues to work even if notification fails
+        }
     }
 
     public boolean isV2rayCoreRunning() {
