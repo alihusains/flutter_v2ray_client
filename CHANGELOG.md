@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0]
+
+### Added
+- **Log Management**: Added V2Ray log viewing and management functionality
+- **Log Features**: Implemented log filtering, copying, and clearing
+- **Example App**: Added "View Logs" page to the example app
+- **Documentation**: Updated with new log viewing feature details and usage examples
+
+### Changed
+- **Build**: Updated Gradle to 8.14 and Kotlin to 2.1.0
+- **Build**: Updated Android Gradle Plugin to 8.13.0
+- **Build**: Updated compiled SDK to 35
+- **Core**: Updated xray-core to v25.10.15 (b69a376)
+- **Compatibility**: Improved compatibility with latest Flutter versions
+
+### Fixed
+- **Android**: Fixed VPN permission race conditions
+- **Android**: Added null safety in V2rayVPNService.onStartCommand
+- **Service**: Improved service reliability with better error handling
+- **Connection**: Fixed mode switching between VPN and proxy modes
+- **Broadcast**: Fixed broadcast receiver registration issues
+- **Activity**: Added proper activity lifecycle handling
+- **Notifications**: Added silent mode when notification permissions are denied
+- **Memory**: Fixed potential memory leaks in service lifecycle
+
+### Performance
+- **Service**: Improved service stability with better error handling
+- **Logging**: Enhanced logging for debugging service lifecycle issues
+- **Error Handling**: Added comprehensive error handling throughout the codebase
+
 ## [2.0.0]
 
 ### Added

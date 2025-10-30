@@ -8,6 +8,22 @@
 ![](https://img.shields.io/github/release/amir-zr/flutter_v2ray_client)
 ![](https://img.shields.io/github/issues/amir-zr/flutter_v2ray_client)
 
+> [!TIP]
+> ## 🚀 Windows Version Coming Soon - Pre-order Now!
+> 
+> **📅 Release Date:** November 13, 2025
+> **🎁 Special Offer:** 30% Discount for Pre-orders!
+> 
+> ### 🌟 Why Upgrade to Premium Windows Version?
+> 
+> - 🛡️ **Lifetime Guarantee** - One-time payment, free updates forever
+> - 💬 **Priority Support** - Dedicated support for all premium users
+> - 🔥 **Advanced Features** - Access to exclusive premium features
+> 
+> [👉 **Pre-order Now on Telegram**](https://t.me/AmirZrDevv)
+
+---
+
 ## Table of contents
 - [flutter\_v2ray\_client](#flutter_v2ray_client)
   - [Table of contents](#table-of-contents)
@@ -54,15 +70,16 @@
 <br>
 
 ## 📱 Supported Platforms
-| Platform  | Status    | Info |
-| --------- | --------- | ---- |
-| Android   | Done ✅   | Xray 25.10.15 |
-| iOS       | Coming Soon | Support via [Donations](#donation) |
-| Windows   | Coming Soon | Support via [Donations](#donation) |
-| Linux     | Coming Soon | Support via [Donations](#donation) |
-| macOS     | Coming Soon | Support via [Donations](#donation) |
+| Platform  | Status    | Info | Type |
+| --------- | --------- | ---- | ---- |
+| Android   | Done ✅   | Xray 25.10.15 | Free |
+| Windows   | Releasing Nov 13, 2025 | [Pre-Order with 30% discount](https://t.me/AmirZrDevv) | Premium |
+| Linux     | Coming Soon | Contact on [Telegram](https://t.me/AmirZrDevv) for updates | Premium |
+| iOS       | Coming Soon | Contact on [Telegram](https://t.me/AmirZrDevv) for updates | Premium |
+| macOS     | Coming Soon | Contact on [Telegram](https://t.me/AmirZrDevv) for updates | Premium |
+| Browser Extension | Coming Soon | Chrome, Firefox, Edge | Premium |
 
-*Note: Support for iOS, Windows, Linux, and macOS can be accelerated through [Donations](#donation). Please see the [Donation](#donation) section below to contribute and help prioritize platform development.*
+*Note: Windows version will be released by November 13, 2025. Limited-time 30% discount for pre-orders. Contact us on [Telegram](https://t.me/AmirZrDevv) for more details.*
 
 <br>
 
@@ -79,7 +96,7 @@ Or you can manually add flutter_v2ray_client into the dependencies section in yo
 
 ```yaml
 dependencies:
-  flutter_v2ray_client: ^2.0.0
+  flutter_v2ray_client: ^3.0.0
 ```
 
 <br>
@@ -326,6 +343,7 @@ splits {
 - Advanced traffic routing and filtering options
 - Improved user interface components
 - Extended protocol support
+- Widgets for mobile devices
 
 ### 💡 Community Contributions
 We welcome contributions from the community! If you're interested in helping implement any of these features, please check our [contribution guidelines](./CONTRIBUTING.md) and feel free to open issues or pull requests.
