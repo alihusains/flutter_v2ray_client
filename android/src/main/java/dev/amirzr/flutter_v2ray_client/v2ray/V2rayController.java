@@ -131,7 +131,7 @@ public class V2rayController {
         return delay[0];
     }
 
-    public static long getV2rayServerDelay(final String config, final String url) {
+    public static long getV2rayServerDelay(final String config, final String url) throws Exception {
         return V2rayCoreManager.getInstance().getV2rayServerDelay(config, url);
     }
 

@@ -8,6 +8,8 @@ class StorageService {
   static const String _serversKey = 'v2ray_servers';
   static const String _subscriptionsKey = 'v2ray_subscriptions';
   static const String _selectedServerKey = 'v2ray_selected_server';
+  static const String _bypassSubnetsKey = 'v2ray_bypass_subnets';
+  static const String _proxyOnlyKey = 'v2ray_proxy_only';
 
   SharedPreferences? _prefs;
 
@@ -152,6 +154,32 @@ class StorageService {
   Future<String?> loadSelectedServer() async {
     final prefs = await _preferences;
     return prefs.getString(_selectedServerKey);
+  }
+
+  // ==================== Settings ====================
+
+  /// Saves the bypass subnets.
+  Future<void> saveBypassSubnets(List<String> subnets) async {
+    final prefs = await _preferences;
+    await prefs.setStringList(_bypassSubnetsKey, subnets);
+  }
+
+  /// Loads the bypass subnets.
+  Future<List<String>> loadBypassSubnets() async {
+    final prefs = await _preferences;
+    return prefs.getStringList(_bypassSubnetsKey) ?? [];
+  }
+
+  /// Saves the proxy only mode.
+  Future<void> saveProxyOnly(bool value) async {
+    final prefs = await _preferences;
+    await prefs.setBool(_proxyOnlyKey, value);
+  }
+
+  /// Loads the proxy only mode.
+  Future<bool> loadProxyOnly() async {
+    final prefs = await _preferences;
+    return prefs.getBool(_proxyOnlyKey) ?? false;
   }
 
   // ==================== Clear ====================

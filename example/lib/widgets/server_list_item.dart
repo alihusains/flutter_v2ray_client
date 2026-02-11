@@ -23,6 +23,9 @@ class ServerListItem extends StatelessWidget {
   /// Callback when delete button is pressed.
   final VoidCallback? onDelete;
 
+  /// Callback when test delay is pressed.
+  final VoidCallback? onTestDelay;
+
   /// Creates a new ServerListItem.
   const ServerListItem({
     super.key,
@@ -32,73 +35,108 @@ class ServerListItem extends StatelessWidget {
     this.onShare,
     this.onEdit,
     this.onDelete,
+    this.onTestDelay,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          onTap: onTap,
-          selected: isSelected,
-          selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withAlpha(50),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          leading: _buildLeadingIcon(context),
-          title: Text(
-            server.remark,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          ListTile(
+            onTap: onTap,
+            dense: false,
+            selected: isSelected,
+            selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withAlpha(40),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: _buildLeadingIcon(context),
+            title: Text(
+              server.remark,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Theme.of(context).colorScheme.primary : null,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${server.address}:${server.port}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${server.address}:${server.port}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              _buildProtocolBadge(context),
-            ],
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _buildProtocolBadge(context),
+                    const Spacer(),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: server.isTestingNotifier,
+                      builder: (context, isTesting, _) {
+                        if (isTesting) {
+                          return const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          );
+                        }
+                        return ValueListenableBuilder<int>(
+                          valueListenable: server.delayNotifier,
+                          builder: (context, delay, _) {
+                            if (delay == -1) return const SizedBox.shrink();
+                            return Text(
+                              delay > 0 ? '${delay}ms' : 'Timeout',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _getDelayColor(delay),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildActionIcon(Icons.share, 'Share', onShare ?? () => _copyToClipboard(context)),
+                _buildActionIcon(Icons.edit_outlined, 'Edit', onEdit),
+                _buildActionIcon(Icons.delete_outline, 'Delete', onDelete, isDestructive: true),
+              ],
+            ),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.share, size: 20),
-                onPressed: onShare ?? () => _copyToClipboard(context),
-                tooltip: 'Share',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, size: 20),
-                onPressed: onEdit,
-                tooltip: 'Edit',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20),
-                onPressed: onDelete,
-                tooltip: 'Delete',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-      ],
+          const Divider(height: 1, indent: 70),
+        ],
+      ),
     );
+  }
+
+  Widget _buildActionIcon(IconData icon, String tooltip, VoidCallback? onPressed, {bool isDestructive = false}) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      onPressed: onPressed,
+      tooltip: tooltip,
+      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+      padding: EdgeInsets.zero,
+      color: isDestructive ? Colors.red.withAlpha(200) : null,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Color _getDelayColor(int delay) {
+    if (delay <= 0) return Colors.red;
+    if (delay < 150) return Colors.greenAccent[700]!;
+    if (delay < 350) return Colors.green;
+    if (delay < 600) return Colors.orange;
+    return Colors.red;
   }
 
   Widget _buildLeadingIcon(BuildContext context) {
@@ -109,10 +147,7 @@ class ServerListItem extends StatelessWidget {
         width: 40,
         height: 40,
         alignment: Alignment.center,
-        child: Text(
-          flag,
-          style: const TextStyle(fontSize: 24),
-        ),
+        child: Text(flag, style: const TextStyle(fontSize: 24)),
       );
     }
 

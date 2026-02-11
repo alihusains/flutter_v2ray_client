@@ -389,22 +389,23 @@ public final class V2rayCoreManager {
         }
     }
 
-    public Long getV2rayServerDelay(final String config, final String url) {
+    public Long getV2rayServerDelay(final String config, final String url) throws Exception {
         try {
-            try {
-                JSONObject config_json = new JSONObject(config);
-                JSONObject new_routing_json = config_json.getJSONObject("routing");
-                new_routing_json.remove("rules");
-                config_json.remove("routing");
-                config_json.put("routing", new_routing_json);
-                return Libv2ray.measureOutboundDelay(config_json.toString(), url);
-            } catch (Exception json_error) {
-                Log.e("getV2rayServerDelay", json_error.toString());
+            JSONObject config_json = new JSONObject(config);
+            JSONObject new_routing_json = config_json.getJSONObject("routing");
+            new_routing_json.remove("rules");
+            config_json.remove("routing");
+            config_json.put("routing", new_routing_json);
+            return Libv2ray.measureOutboundDelay(config_json.toString(), url);
+        } catch (Exception e) {
+            // Log the original error for debugging
+            Log.e("getV2rayServerDelay", e.toString());
+            // If it's a JSON error, try with original config
+            if (e instanceof org.json.JSONException) {
                 return Libv2ray.measureOutboundDelay(config, url);
             }
-        } catch (Exception e) {
-            Log.e("getV2rayServerDelayCore", e.toString());
-            return -1L;
+            // Rethrow so the plugin can catch and pass the message to Dart
+            throw e;
         }
     }
 

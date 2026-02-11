@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 /// Represents a V2Ray server configuration.
 class ServerConfig {
@@ -27,7 +28,17 @@ class ServerConfig {
   final String? subscriptionId;
 
   /// Last measured delay in ms (-1 if not tested, -2 if timeout/error).
-  int delay;
+  /// Wrapped in a ValueNotifier for localized UI updates.
+  final ValueNotifier<int> delayNotifier;
+
+  /// Whether this server is currently being tested.
+  final ValueNotifier<bool> isTestingNotifier;
+
+  int get delay => delayNotifier.value;
+  set delay(int value) => delayNotifier.value = value;
+
+  bool get isTesting => isTestingNotifier.value;
+  set isTesting(bool value) => isTestingNotifier.value = value;
 
   /// Creates a new server configuration.
   ServerConfig({
@@ -39,8 +50,10 @@ class ServerConfig {
     required this.port,
     required this.fullConfig,
     this.subscriptionId,
-    this.delay = -1,
-  });
+    int delay = -1,
+    bool isTesting = false,
+  })  : delayNotifier = ValueNotifier<int>(delay),
+        isTestingNotifier = ValueNotifier<bool>(isTesting);
 
   /// Creates a ServerConfig from JSON map.
   factory ServerConfig.fromJson(Map<String, dynamic> json) {
@@ -83,6 +96,7 @@ class ServerConfig {
     String? fullConfig,
     String? subscriptionId,
     int? delay,
+    bool? isTesting,
   }) {
     return ServerConfig(
       id: id ?? this.id,
@@ -94,6 +108,7 @@ class ServerConfig {
       fullConfig: fullConfig ?? this.fullConfig,
       subscriptionId: subscriptionId ?? this.subscriptionId,
       delay: delay ?? this.delay,
+      isTesting: isTesting ?? this.isTesting,
     );
   }
 
@@ -111,5 +126,10 @@ class ServerConfig {
     return jsonList
         .map((json) => ServerConfig.fromJson(json as Map<String, dynamic>))
         .toList();
+  }
+
+  void dispose() {
+    delayNotifier.dispose();
+    isTestingNotifier.dispose();
   }
 }

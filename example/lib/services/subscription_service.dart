@@ -153,7 +153,6 @@ class SubscriptionService {
 
   /// Generates a unique ID.
   String _generateId() {
-    return DateTime.now().microsecondsSinceEpoch.toString() +
-        '_${(DateTime.now().millisecond * 1000).toRadixString(36)}';
+    return '${DateTime.now().microsecondsSinceEpoch}_${(DateTime.now().millisecond * 1000).toRadixString(36)}';
   }
 }

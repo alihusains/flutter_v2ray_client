@@ -131,10 +131,11 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                 case "getServerDelay":
                     executor.submit(() -> {
                         try {
-                            result.success(
-                                    V2rayController.getV2rayServerDelay(call.argument("config"), call.argument("url")));
+                            long delay = V2rayController.getV2rayServerDelay(call.argument("config"),
+                                    call.argument("url"));
+                            result.success(delay);
                         } catch (Exception e) {
-                            result.success(-1);
+                            result.error("DELAY_ERROR", e.getMessage(), null);
                         }
                     });
                     break;
