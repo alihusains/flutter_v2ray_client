@@ -17,6 +17,9 @@ class _EditServerPageState extends State<EditServerPage> {
   late TextEditingController _addressController;
   late TextEditingController _portController;
   late TextEditingController _urlController;
+  late TextEditingController _uuidController;
+  late TextEditingController _pathController;
+  late TextEditingController _sniController;
   String _protocol = '';
 
   @override
@@ -26,7 +29,47 @@ class _EditServerPageState extends State<EditServerPage> {
     _addressController = TextEditingController(text: widget.server.address);
     _portController = TextEditingController(text: widget.server.port.toString());
     _urlController = TextEditingController(text: widget.server.url);
+    _uuidController = TextEditingController();
+    _pathController = TextEditingController();
+    _sniController = TextEditingController();
     _protocol = widget.server.protocol;
+    _parseUrlToFields(widget.server.url, initial: true);
+  }
+
+  void _parseUrlToFields(String url, {bool initial = false}) {
+    try {
+      final v2rayUrl = V2ray.parseFromURL(url);
+      if (!initial) {
+        setState(() {
+          _remarkController.text = v2rayUrl.remark;
+          _addressController.text = v2rayUrl.address;
+          _portController.text = v2rayUrl.port.toString();
+          _protocol = url.split('://')[0].toLowerCase();
+        });
+      }
+
+      if (v2rayUrl is VmessURL) {
+        _uuidController.text = v2rayUrl.rawConfig['id'] ?? '';
+        _pathController.text = v2rayUrl.rawConfig['path'] ?? '';
+        _sniController.text = v2rayUrl.rawConfig['sni'] ?? v2rayUrl.rawConfig['host'] ?? '';
+      } else if (v2rayUrl is VlessURL) {
+        _uuidController.text = v2rayUrl.uri.userInfo;
+        _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
+        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+      } else if (v2rayUrl is TrojanURL) {
+        _uuidController.text = v2rayUrl.uri.userInfo;
+        _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
+        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+      } else if (v2rayUrl is ShadowSocksURL) {
+        _uuidController.text = '${v2rayUrl.method}:${v2rayUrl.password}';
+        _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
+        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+      } else if (v2rayUrl is SocksURL) {
+        _uuidController.text = '${v2rayUrl.username ?? ''}:${v2rayUrl.password ?? ''}';
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   @override
@@ -35,6 +78,9 @@ class _EditServerPageState extends State<EditServerPage> {
     _addressController.dispose();
     _portController.dispose();
     _urlController.dispose();
+    _uuidController.dispose();
+    _pathController.dispose();
+    _sniController.dispose();
     super.dispose();
   }
 
@@ -48,18 +94,14 @@ class _EditServerPageState extends State<EditServerPage> {
     }
 
     try {
-      // Parse the URL to verify it and get new details
       final v2rayUrl = V2ray.parseFromURL(newUrl);
-
-      // Create updated ServerConfig
-      // We prioritize the parsed values from the URL
       final newServer = widget.server.copyWith(
         url: newUrl,
         remark: v2rayUrl.remark.isNotEmpty ? v2rayUrl.remark : _remarkController.text,
         address: v2rayUrl.address.isNotEmpty ? v2rayUrl.address : _addressController.text,
         port: v2rayUrl.port > 0 ? v2rayUrl.port : int.tryParse(_portController.text) ?? 443,
         fullConfig: v2rayUrl.getFullConfiguration(),
-        protocol: v2rayUrl.url.split('://')[0],
+        protocol: newUrl.split('://')[0].toLowerCase(),
       );
 
       Navigator.pop(context, newServer);
@@ -78,6 +120,7 @@ class _EditServerPageState extends State<EditServerPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
+            tooltip: 'Save',
             onPressed: _save,
           ),
         ],
@@ -87,16 +130,16 @@ class _EditServerPageState extends State<EditServerPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildSectionTitle('Basic Information'),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _remarkController,
               decoration: const InputDecoration(
-                labelText: 'Remark',
+                labelText: 'Remark / Name',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.label_outline),
               ),
-              onChanged: (value) {
-                // Ideally, update URL fragment or JSON ps field
-                _tryUpdateUrl();
-              },
+              onChanged: (value) => _tryUpdateUrl(),
             ),
             const SizedBox(height: 16),
             Row(
@@ -108,6 +151,7 @@ class _EditServerPageState extends State<EditServerPage> {
                     decoration: const InputDecoration(
                       labelText: 'Address',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.dns_outlined),
                     ),
                     onChanged: (value) => _tryUpdateUrl(),
                   ),
@@ -128,49 +172,116 @@ class _EditServerPageState extends State<EditServerPage> {
               ],
             ),
             const SizedBox(height: 16),
-             TextFormField(
+            TextFormField(
+              controller: _uuidController,
+              decoration: InputDecoration(
+                labelText: _protocol == 'ss' || _protocol == 'socks' ? 'Password / UserInfo' : 'UUID',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.vpn_key_outlined),
+              ),
+              onChanged: (value) => _tryUpdateUrl(),
+            ),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Advanced Settings (Transport & TLS)'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _pathController,
+                    decoration: const InputDecoration(
+                      labelText: 'Path',
+                      hintText: '/v2ray',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => _tryUpdateUrl(),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _sniController,
+                    decoration: const InputDecoration(
+                      labelText: 'SNI / Host',
+                      hintText: 'example.com',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => _tryUpdateUrl(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Source Configuration'),
+            const SizedBox(height: 8),
+            TextFormField(
               controller: _urlController,
               decoration: const InputDecoration(
-                labelText: 'Share URL (Source of Truth)',
+                labelText: 'Share URL',
                 border: OutlineInputBorder(),
-                helperText: 'Edit this to change configuration',
+                helperText: 'Editing this will automatically update the fields above.',
+                alignLabelWithHint: true,
               ),
-              maxLines: 5,
+              maxLines: 4,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
               onChanged: (value) {
-                // If user edits URL, we should update fields?
-                // Parsing might be expensive or fail while typing.
-                // We can do it on focus lost or just leave it.
+                _parseUrlToFields(value.trim());
               },
             ),
-             const SizedBox(height: 8),
-             ElevatedButton(
-               onPressed: () {
-                 // Try to parse URL and update fields
-                 try {
-                   final v2rayUrl = V2ray.parseFromURL(_urlController.text.trim());
-                   setState(() {
-                     _remarkController.text = v2rayUrl.remark;
-                     _addressController.text = v2rayUrl.address;
-                     _portController.text = v2rayUrl.port.toString();
-                     _protocol = v2rayUrl.url.split('://')[0];
-                   });
-                 } catch (e) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Invalid URL format')),
-                   );
-                 }
-               },
-               child: const Text('Parse URL to Fields'),
-             ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.code),
+              label: const Text('Preview V2Ray JSON'),
+              onPressed: _showJsonPreview,
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  void _showJsonPreview() {
+    try {
+      final v2rayUrl = V2ray.parseFromURL(_urlController.text.trim());
+      final jsonConfig = v2rayUrl.getFullConfiguration();
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('V2Ray JSON Preview'),
+          content: SingleChildScrollView(
+            child: SelectableText(
+              jsonConfig,
+              style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot generate JSON: $e')),
+      );
+    }
+  }
+
   void _tryUpdateUrl() {
-    // Attempt to update the URL based on fields
-    // This is tricky as we need to preserve other params in the URL
     final String currentUrl = _urlController.text.trim();
     if (currentUrl.isEmpty) return;
 
@@ -179,9 +290,11 @@ class _EditServerPageState extends State<EditServerPage> {
       final remark = _remarkController.text;
       final address = _addressController.text;
       final port = int.tryParse(_portController.text) ?? 0;
+      final uuid = _uuidController.text;
+      final path = _pathController.text;
+      final sni = _sniController.text;
 
-      if (_protocol.toLowerCase() == 'vmess') {
-        // Handle VMess
+      if (_protocol == 'vmess') {
         final String base64Part = currentUrl.substring(8);
         String padded = base64Part;
         if (padded.length % 4 > 0) {
@@ -194,37 +307,64 @@ class _EditServerPageState extends State<EditServerPage> {
           config['ps'] = remark;
           config['add'] = address;
           config['port'] = port;
+          config['id'] = uuid;
+          config['path'] = path;
+          if (config['tls'] == 'tls') {
+            config['sni'] = sni;
+            config['host'] = sni;
+          }
 
           final newJson = jsonEncode(config);
           final newBase64 = base64Encode(utf8.encode(newJson));
           newUrl = 'vmess://$newBase64';
-        } catch (e) {
-          // ignore parsing error
-        }
-      } else {
-        // Handle Uri based (vless, trojan, etc)
+        } catch (e) {}
+      } else if (_protocol == 'ss') {
         final uri = Uri.parse(currentUrl);
-        // Uri is immutable, create new one
+        final query = Map<String, String>.from(uri.queryParameters);
+        if (path.isNotEmpty) query['path'] = path;
+        if (sni.isNotEmpty) query['sni'] = sni;
 
-        // Host and Port are in authority usually, or host param
-        // VLESS: vless://uuid@host:port?params#remark
-        // We can replace fields.
-        // NOTE: This is fragile if we don't parse strictly.
-        // But Uri class handles most.
+        // ShadowSocks userInfo is base64(method:password)
+        String userInfo = uuid;
+        if (!uuid.contains(':')) {
+           // If user just entered password, we might lose method.
+           // But usually they see "method:password" in the field.
+        } else {
+           userInfo = base64Encode(utf8.encode(uuid)).replaceAll('=', '');
+        }
 
-        // Construct new URI
         newUrl = uri.replace(
           host: address,
           port: port,
+          userInfo: userInfo,
+          queryParameters: query,
+          fragment: remark,
+        ).toString();
+      } else {
+        final uri = Uri.parse(currentUrl);
+        final query = Map<String, String>.from(uri.queryParameters);
+        if (path.isNotEmpty) query['path'] = path;
+        if (sni.isNotEmpty) {
+          query['sni'] = sni;
+          if (query['type'] == 'ws' || query['type'] == 'grpc') {
+            query['host'] = sni;
+          }
+        }
+
+        newUrl = uri.replace(
+          host: address,
+          port: port,
+          userInfo: uuid,
+          queryParameters: query,
           fragment: remark,
         ).toString();
       }
 
-      if (newUrl != currentUrl) {
-        _urlController.text = newUrl;
+      if (newUrl != _urlController.text) {
+        setState(() {
+          _urlController.text = newUrl;
+        });
       }
-    } catch (e) {
-      // Ignore errors during auto-update
-    }
+    } catch (e) {}
   }
 }

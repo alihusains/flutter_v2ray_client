@@ -37,6 +37,9 @@ dependencies:
   # QR Code Scanner
   mobile_scanner: ^5.0.0
 
+  # For gallery import
+  image_picker: ^1.1.2
+
   # For permissions
   permission_handler: ^11.0.0
 
