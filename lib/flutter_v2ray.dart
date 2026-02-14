@@ -12,12 +12,12 @@ import 'flutter_v2ray_platform_interface.dart';
 import 'model/v2ray_status.dart';
 
 export 'model/v2ray_status.dart';
-export 'url/url.dart';
-export 'url/vmess.dart';
-export 'url/vless.dart';
-export 'url/trojan.dart';
 export 'url/shadowsocks.dart';
 export 'url/socks.dart';
+export 'url/trojan.dart';
+export 'url/url.dart';
+export 'url/vless.dart';
+export 'url/vmess.dart';
 
 /// A class for managing V2Ray connections and operations.
 /// Provides methods to initialize, start, stop, and query V2Ray services.
