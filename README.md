@@ -59,10 +59,14 @@
 
 ## ⚡ Features
 - Run V2Ray Proxy & VPN Mode
+- **Parallel Bulk Server Delay Testing** (High Performance)
 - Get Server Delay (outbound and connected)
+- **Built-in QR Code Scanner** for server configurations
+- **Server Configuration Editor** (Edit remark, address, port, and full JSON)
 - Parsing V2Ray sharing links and making changes to them
 - Built-in socket protection for Android VPN tunneling
 - Live status updates: connection state, speeds, traffic, duration
+- **Export configurations** to clipboard
 
 <br>
 
