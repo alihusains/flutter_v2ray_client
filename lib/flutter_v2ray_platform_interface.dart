@@ -82,6 +82,17 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
     throw UnimplementedError('getServerDelay() has not been implemented.');
   }
 
+  /// Measures the delay to multiple V2Ray servers using the provided configurations and URL.
+  /// [configs] is a list of V2Ray configurations in JSON format.
+  /// [url] is the server URL to test.
+  /// Returns a [Stream] that emits a list containing [index, delay] for each configuration.
+  Stream<List<dynamic>> getBulkServerDelay({
+    required List<String> configs,
+    required String url,
+  }) {
+    throw UnimplementedError('getBulkServerDelay() has not been implemented.');
+  }
+
   /// Measures the delay to the currently connected V2Ray server.
   /// [url] is the server URL to test.
   /// Returns a [Future] that completes with the delay in milliseconds.

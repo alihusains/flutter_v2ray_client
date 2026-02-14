@@ -10,6 +10,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -22,8 +24,10 @@ import dev.amirzr.flutter_v2ray_client.v2ray.utils.AppConfigs;
 import dev.amirzr.flutter_v2ray_client.v2ray.utils.LogcatManager;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -39,11 +43,15 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
 
     private static final int REQUEST_CODE_VPN_PERMISSION = 24;
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1;
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    // Use a fixed thread pool to allow parallel delay testing.
+    // This prevents the "not working" perception caused by serial execution slowness.
+    private final ExecutorService executor = Executors.newFixedThreadPool(8);
 
     private MethodChannel vpnControlMethod;
     private EventChannel vpnStatusEvent;
     private EventChannel.EventSink vpnStatusSink;
+    private EventChannel vpnDelayEvent;
+    private EventChannel.EventSink vpnDelaySink;
     private Activity activity;
     private Context appContext;
     private BroadcastReceiver v2rayBroadCastReceiver;
@@ -55,6 +63,22 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
         this.appContext = binding.getApplicationContext();
         vpnControlMethod = new MethodChannel(binding.getBinaryMessenger(), "flutter_v2ray_client");
         vpnStatusEvent = new EventChannel(binding.getBinaryMessenger(), "flutter_v2ray_client/status");
+        vpnDelayEvent = new EventChannel(binding.getBinaryMessenger(), "flutter_v2ray_client/delay");
+
+        vpnDelayEvent.setStreamHandler(new EventChannel.StreamHandler() {
+            @Override
+            public void onListen(Object arguments, EventChannel.EventSink events) {
+                vpnDelaySink = events;
+                if (arguments instanceof Map) {
+                    startBulkDelayTest((Map) arguments);
+                }
+            }
+
+            @Override
+            public void onCancel(Object arguments) {
+                vpnDelaySink = null;
+            }
+        });
 
         vpnStatusEvent.setStreamHandler(new EventChannel.StreamHandler() {
             @Override
@@ -209,6 +233,49 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                     break;
             }
         });
+    }
+
+    private void startBulkDelayTest(Map arguments) {
+        List<String> configs = (List<String>) arguments.get("configs");
+        String delayUrl = (String) arguments.get("url");
+        if (configs != null) {
+            int total = configs.size();
+            AtomicInteger counter = new AtomicInteger(0);
+
+            for (int i = 0; i < total; i++) {
+                final int index = i;
+                final String config = configs.get(i);
+                executor.submit(() -> {
+                    long delay = -1;
+                    try {
+                        delay = V2rayController.getV2rayServerDelay(config, delayUrl);
+                    } catch (Exception e) {
+                        Log.e("FlutterV2rayPlugin", "Delay test failed for index " + index, e);
+                    }
+                    final long finalDelay = delay;
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        if (vpnDelaySink != null) {
+                            java.util.ArrayList<Object> event = new java.util.ArrayList<>();
+                            event.add(index);
+                            event.add(finalDelay);
+                            try {
+                                vpnDelaySink.success(event);
+                            } catch (Exception e) {
+                                Log.e("FlutterV2rayPlugin", "Failed to send delay result", e);
+                            }
+
+                            if (counter.incrementAndGet() == total) {
+                                try {
+                                    vpnDelaySink.endOfStream();
+                                } catch (Exception e) {
+                                    Log.e("FlutterV2rayPlugin", "Failed to end stream", e);
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        }
     }
 
     @Override

@@ -12,6 +12,7 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
 
   /// The event channel used to receive status updates from the native platform.
   final eventChannel = const EventChannel('flutter_v2ray_client/status');
+  final delayEventChannel = const EventChannel('flutter_v2ray_client/delay');
 
   @override
   Future<void> initializeV2Ray({
@@ -72,6 +73,22 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
     return await methodChannel.invokeMethod('getServerDelay', {
       'config': config,
       'url': url,
+    });
+  }
+
+  @override
+  Stream<List<dynamic>> getBulkServerDelay({
+    required List<String> configs,
+    required String url,
+  }) {
+    return delayEventChannel.receiveBroadcastStream({
+      'configs': configs,
+      'url': url,
+    }).map((event) {
+      if (event is List) {
+        return event;
+      }
+      return [];
     });
   }
 

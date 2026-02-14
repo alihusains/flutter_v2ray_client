@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_v2ray_client/flutter_v2ray.dart';
@@ -9,7 +11,10 @@ import '../widgets/server_list_item.dart';
 import '../widgets/add_menu.dart';
 import '../widgets/overflow_menu.dart';
 import 'add_subscription_page.dart';
+import 'edit_server_page.dart';
+import 'qr_scanner_page.dart';
 import '../log_viewer_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,10 +42,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final ValueNotifier<int> _totalToTestNotifier = ValueNotifier<int>(0);
   String? _coreVersion;
   bool _isLoading = true;
-
-  final GlobalKey<AnimatedListState> _allServersListKey =
-      GlobalKey<AnimatedListState>();
-  final Map<String, GlobalKey<AnimatedListState>> _subListKeys = {};
+  StreamSubscription? _delaySubscription;
 
   TabController? _tabController;
 
@@ -89,10 +91,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (oldIndex < _tabController!.length) {
       _tabController!.index = oldIndex;
     }
+    _tabController!.addListener(() {
+      if (_tabController!.indexIsChanging == false) {
+        setState(() {}); // Rebuild to update UI based on current tab
+      }
+    });
   }
 
   @override
   void dispose() {
+    _delaySubscription?.cancel();
     _tabController?.dispose();
     _v2rayStatus.dispose();
     super.dispose();
@@ -303,6 +311,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _testAllDelays() async {
     if (_isTestingDelays) {
+      await _delaySubscription?.cancel();
+      _delaySubscription = null;
       setState(() => _isTestingDelays = false);
       return;
     }
@@ -328,30 +338,106 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _totalToTestNotifier.value = serversToTest.length;
       for (var server in serversToTest) {
         server.delay = -1;
+        server.isTesting = true;
       }
     });
 
-    // POOL-BASED CONCURRENT PINGING (Concurrency of 10)
-    final List<ServerConfig> queue = List.from(serversToTest);
-    final List<Future<void>> workers = [];
-    const int maxConcurrency = 10;
+    final configs = serversToTest.map((s) => s.fullConfig).toList();
 
-    for (int i = 0; i < maxConcurrency && i < serversToTest.length; i++) {
-      workers.add(() async {
-        while (queue.isNotEmpty && _isTestingDelays && mounted) {
-          final server = queue.removeAt(0);
-          await _testDelay(server);
-        }
-      }());
+    _delaySubscription = _v2ray
+        .getBulkServerDelay(configs: configs)
+        .listen(
+          (event) {
+            // event is List<dynamic> from the stream
+            if (event.length >= 2) {
+              final index = event[0] as int;
+              final delay = event[1] as int;
+
+              if (index >= 0 && index < serversToTest.length) {
+                final server = serversToTest[index];
+                // If delay is -1 or 0, treat as timeout (0) for UI consistency
+                server.delay = delay <= 0 ? 0 : delay;
+                server.isTesting = false;
+                _storageService.updateServer(server);
+
+                if (mounted) {
+                  _testedCountNotifier.value++;
+                }
+              }
+            }
+          },
+          onDone: () {
+            if (mounted) {
+              setState(() {
+                _isTestingDelays = false;
+                _delaySubscription = null;
+                _sortServers();
+              });
+            }
+          },
+          onError: (e) {
+            if (mounted) {
+              setState(() {
+                _isTestingDelays = false;
+                _delaySubscription = null;
+              });
+            }
+          },
+        );
+  }
+
+  void _editCurrentSubscription() async {
+    final currentIndex = _tabController?.index ?? 0;
+    if (currentIndex == 0 || currentIndex > _subscriptions.length) return;
+
+    final subToEdit = _subscriptions[currentIndex - 1];
+
+    final result = await Navigator.push<Subscription>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSubscriptionPage(subscription: subToEdit),
+      ),
+    );
+
+    if (result != null) {
+      await _storageService.updateSubscription(result);
+      await _loadData();
+      // Restore tab index
+      if (_tabController != null && currentIndex < _tabController!.length) {
+        _tabController!.animateTo(currentIndex);
+      }
+    }
+  }
+
+  void _exportConfigs() async {
+    List<ServerConfig> serversToExport;
+    final currentIndex = _tabController?.index ?? 0;
+
+    if (currentIndex == 0) {
+      serversToExport = _allServers;
+    } else {
+      final subscriptionId = _subscriptions[currentIndex - 1].id;
+      serversToExport =
+          _allServers.where((s) => s.subscriptionId == subscriptionId).toList();
     }
 
-    await Future.wait(workers);
+    if (serversToExport.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No configs to export')));
+      return;
+    }
 
+    final String exportString = serversToExport.map((s) => s.url).join('\n');
+    await Clipboard.setData(ClipboardData(text: exportString));
     if (mounted) {
-      setState(() {
-        _isTestingDelays = false;
-        _sortServers(); // Final sort for stability
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Exported ${serversToExport.length} configs to clipboard',
+          ),
+        ),
+      );
     }
   }
 
@@ -390,14 +476,58 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       (context) => AddMenu(
                         onImportClipboard: _importFromClipboard,
                         onAddSubscription: _addSubscription,
-                        onScanQr: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'QR Scanner not implemented in this demo',
+                        onScanQr: () async {
+                          if (await Permission.camera.request().isGranted) {
+                            if (!context.mounted) return;
+                            final result = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const QRScannerPage(),
                               ),
-                            ),
-                          );
+                            );
+                            if (result != null && context.mounted) {
+                              try {
+                                final server = _subscriptionService.parseUrl(
+                                  result,
+                                );
+                                if (server != null) {
+                                  await _storageService.addServer(server);
+                                  await _loadData();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Server imported'),
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  // Try as subscription?
+                                  // For now assume server config
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Invalid QR Code'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Camera permission denied'),
+                                ),
+                              );
+                            }
+                          }
                         },
                       ),
                 ),
@@ -437,13 +567,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           await _loadData();
                         },
                         onTestAllDelays: _testAllDelays,
-                        onExportConfigs: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Export not implemented'),
-                            ),
-                          );
-                        },
+                        onExportConfigs: _exportConfigs,
+                        onEditSubscription:
+                            (_tabController?.index ?? 0) > 0
+                                ? () => _editCurrentSubscription()
+                                : null,
                       ),
                 );
               }
@@ -602,10 +730,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               _loadData();
             },
             onTestDelay: () => _testDelay(server),
-            onEdit: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Edit not implemented')),
+            onEdit: () async {
+              final updatedServer = await Navigator.push<ServerConfig>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditServerPage(server: server),
+                ),
               );
+
+              if (updatedServer != null) {
+                await _storageService.updateServer(updatedServer);
+                _loadData();
+              }
             },
           );
         },

@@ -107,8 +107,21 @@ class V2ray {
     } catch (_) {
       throw ArgumentError('The provided string is not valid JSON');
     }
-    return FlutterV2rayPlatform.instance
-        .getServerDelay(config: config, url: url);
+    return FlutterV2rayPlatform.instance.getServerDelay(config: config, url: url);
+  }
+
+  /// Measures the delay to multiple V2Ray servers using the provided configurations.
+  /// [configs] is a list of V2Ray configurations in JSON format.
+  /// [url] is the server URL to test for delay (default is 'https://google.com/generate_204').
+  /// Returns a [Stream] that emits a list containing [index, delay] for each configuration.
+  Stream<List<dynamic>> getBulkServerDelay({
+    required List<String> configs,
+    String url = 'https://google.com/generate_204',
+  }) {
+    return FlutterV2rayPlatform.instance.getBulkServerDelay(
+      configs: configs,
+      url: url,
+    );
   }
 
   /// Measures the delay to the currently connected V2Ray server.

@@ -5,6 +5,7 @@ class OverflowMenu extends StatelessWidget {
   final VoidCallback onDeleteAllServers;
   final VoidCallback onTestAllDelays;
   final VoidCallback onExportConfigs;
+  final VoidCallback? onEditSubscription;
 
   const OverflowMenu({
     super.key,
@@ -12,6 +13,7 @@ class OverflowMenu extends StatelessWidget {
     required this.onDeleteAllServers,
     required this.onTestAllDelays,
     required this.onExportConfigs,
+    this.onEditSubscription,
   });
 
   @override
@@ -19,6 +21,15 @@ class OverflowMenu extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (onEditSubscription != null)
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Edit Subscription'),
+            onTap: () {
+              Navigator.pop(context);
+              onEditSubscription!();
+            },
+          ),
         ListTile(
           leading: const Icon(Icons.sync),
           title: const Text('Update all subscriptions'),
