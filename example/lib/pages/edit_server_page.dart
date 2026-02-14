@@ -27,7 +27,9 @@ class _EditServerPageState extends State<EditServerPage> {
     super.initState();
     _remarkController = TextEditingController(text: widget.server.remark);
     _addressController = TextEditingController(text: widget.server.address);
-    _portController = TextEditingController(text: widget.server.port.toString());
+    _portController = TextEditingController(
+      text: widget.server.port.toString(),
+    );
     _urlController = TextEditingController(text: widget.server.url);
     _uuidController = TextEditingController();
     _pathController = TextEditingController();
@@ -51,21 +53,32 @@ class _EditServerPageState extends State<EditServerPage> {
       if (v2rayUrl is VmessURL) {
         _uuidController.text = v2rayUrl.rawConfig['id'] ?? '';
         _pathController.text = v2rayUrl.rawConfig['path'] ?? '';
-        _sniController.text = v2rayUrl.rawConfig['sni'] ?? v2rayUrl.rawConfig['host'] ?? '';
+        _sniController.text =
+            v2rayUrl.rawConfig['sni'] ?? v2rayUrl.rawConfig['host'] ?? '';
       } else if (v2rayUrl is VlessURL) {
         _uuidController.text = v2rayUrl.uri.userInfo;
         _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
-        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+        _sniController.text =
+            v2rayUrl.uri.queryParameters['sni'] ??
+            v2rayUrl.uri.queryParameters['host'] ??
+            '';
       } else if (v2rayUrl is TrojanURL) {
         _uuidController.text = v2rayUrl.uri.userInfo;
         _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
-        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+        _sniController.text =
+            v2rayUrl.uri.queryParameters['sni'] ??
+            v2rayUrl.uri.queryParameters['host'] ??
+            '';
       } else if (v2rayUrl is ShadowSocksURL) {
         _uuidController.text = '${v2rayUrl.method}:${v2rayUrl.password}';
         _pathController.text = v2rayUrl.uri.queryParameters['path'] ?? '';
-        _sniController.text = v2rayUrl.uri.queryParameters['sni'] ?? v2rayUrl.uri.queryParameters['host'] ?? '';
+        _sniController.text =
+            v2rayUrl.uri.queryParameters['sni'] ??
+            v2rayUrl.uri.queryParameters['host'] ??
+            '';
       } else if (v2rayUrl is SocksURL) {
-        _uuidController.text = '${v2rayUrl.username ?? ''}:${v2rayUrl.password ?? ''}';
+        _uuidController.text =
+            '${v2rayUrl.username ?? ''}:${v2rayUrl.password ?? ''}';
       }
     } catch (e) {
       // ignore
@@ -87,9 +100,9 @@ class _EditServerPageState extends State<EditServerPage> {
   void _save() {
     final String newUrl = _urlController.text.trim();
     if (newUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('URL cannot be empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('URL cannot be empty')));
       return;
     }
 
@@ -97,18 +110,27 @@ class _EditServerPageState extends State<EditServerPage> {
       final v2rayUrl = V2ray.parseFromURL(newUrl);
       final newServer = widget.server.copyWith(
         url: newUrl,
-        remark: v2rayUrl.remark.isNotEmpty ? v2rayUrl.remark : _remarkController.text,
-        address: v2rayUrl.address.isNotEmpty ? v2rayUrl.address : _addressController.text,
-        port: v2rayUrl.port > 0 ? v2rayUrl.port : int.tryParse(_portController.text) ?? 443,
+        remark:
+            v2rayUrl.remark.isNotEmpty
+                ? v2rayUrl.remark
+                : _remarkController.text,
+        address:
+            v2rayUrl.address.isNotEmpty
+                ? v2rayUrl.address
+                : _addressController.text,
+        port:
+            v2rayUrl.port > 0
+                ? v2rayUrl.port
+                : int.tryParse(_portController.text) ?? 443,
         fullConfig: v2rayUrl.getFullConfiguration(),
         protocol: newUrl.split('://')[0].toLowerCase(),
       );
 
       Navigator.pop(context, newServer);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid config: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invalid config: $e')));
     }
   }
 
@@ -175,7 +197,10 @@ class _EditServerPageState extends State<EditServerPage> {
             TextFormField(
               controller: _uuidController,
               decoration: InputDecoration(
-                labelText: _protocol == 'ss' || _protocol == 'socks' ? 'Password / UserInfo' : 'UUID',
+                labelText:
+                    _protocol == 'ss' || _protocol == 'socks'
+                        ? 'Password / UserInfo'
+                        : 'UUID',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.vpn_key_outlined),
               ),
@@ -219,7 +244,8 @@ class _EditServerPageState extends State<EditServerPage> {
               decoration: const InputDecoration(
                 labelText: 'Share URL',
                 border: OutlineInputBorder(),
-                helperText: 'Editing this will automatically update the fields above.',
+                helperText:
+                    'Editing this will automatically update the fields above.',
                 alignLabelWithHint: true,
               ),
               maxLines: 4,
@@ -258,26 +284,27 @@ class _EditServerPageState extends State<EditServerPage> {
 
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('V2Ray JSON Preview'),
-          content: SingleChildScrollView(
-            child: SelectableText(
-              jsonConfig,
-              style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+        builder:
+            (context) => AlertDialog(
+              title: const Text('V2Ray JSON Preview'),
+              content: SingleChildScrollView(
+                child: SelectableText(
+                  jsonConfig,
+                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot generate JSON: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Cannot generate JSON: $e')));
     }
   }
 
@@ -317,7 +344,9 @@ class _EditServerPageState extends State<EditServerPage> {
           final newJson = jsonEncode(config);
           final newBase64 = base64Encode(utf8.encode(newJson));
           newUrl = 'vmess://$newBase64';
-        } catch (e) {}
+        } catch (e) {
+          // Ignore parsing errors for invalid base64 or JSON
+        }
       } else if (_protocol == 'ss') {
         final uri = Uri.parse(currentUrl);
         final query = Map<String, String>.from(uri.queryParameters);
@@ -327,19 +356,22 @@ class _EditServerPageState extends State<EditServerPage> {
         // ShadowSocks userInfo is base64(method:password)
         String userInfo = uuid;
         if (!uuid.contains(':')) {
-           // If user just entered password, we might lose method.
-           // But usually they see "method:password" in the field.
+          // If user just entered password, we might lose method.
+          // But usually they see "method:password" in the field.
         } else {
-           userInfo = base64Encode(utf8.encode(uuid)).replaceAll('=', '');
+          userInfo = base64Encode(utf8.encode(uuid)).replaceAll('=', '');
         }
 
-        newUrl = uri.replace(
-          host: address,
-          port: port,
-          userInfo: userInfo,
-          queryParameters: query,
-          fragment: remark,
-        ).toString();
+        newUrl =
+            uri
+                .replace(
+                  host: address,
+                  port: port,
+                  userInfo: userInfo,
+                  queryParameters: query,
+                  fragment: remark,
+                )
+                .toString();
       } else {
         final uri = Uri.parse(currentUrl);
         final query = Map<String, String>.from(uri.queryParameters);
@@ -351,13 +383,16 @@ class _EditServerPageState extends State<EditServerPage> {
           }
         }
 
-        newUrl = uri.replace(
-          host: address,
-          port: port,
-          userInfo: uuid,
-          queryParameters: query,
-          fragment: remark,
-        ).toString();
+        newUrl =
+            uri
+                .replace(
+                  host: address,
+                  port: port,
+                  userInfo: uuid,
+                  queryParameters: query,
+                  fragment: remark,
+                )
+                .toString();
       }
 
       if (newUrl != _urlController.text) {
@@ -365,6 +400,8 @@ class _EditServerPageState extends State<EditServerPage> {
           _urlController.text = newUrl;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore errors during URL update to prevent UI flicker
+    }
   }
 }

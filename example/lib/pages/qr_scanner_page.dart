@@ -29,33 +29,24 @@ class _QRScannerPageState extends State<QRScannerPage> {
     setState(() => _isProcessing = true);
 
     try {
-      // In mobile_scanner 5.x, analyzeImage might not return the value directly.
-      // We rely on the barcodes stream or a dedicated call if available.
-      // Some versions of mobile_scanner have a bug where analyzeImage doesn't return the value.
-      // We will try to analyze it and if it returns true, we wait a bit for the stream or show a message.
-      final result = await controller.analyzeImage(image.path);
-      if (!result) {
+      final BarcodeCapture? result = await controller.analyzeImage(image.path);
+      if (result == null || result.barcodes.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No QR code found in image')),
           );
         }
       } else {
-        // If it found something, it usually triggers onDetect.
-        // If it doesn't, we might be stuck.
-        // For better UX, we'll give it a moment.
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted && _isProcessing) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('QR Code detected, processing...')),
-          );
+        final String? code = result.barcodes.first.rawValue;
+        if (code != null && mounted) {
+          Navigator.pop(context, code);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error analyzing image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error analyzing image: $e')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -69,14 +60,16 @@ class _QRScannerPageState extends State<QRScannerPage> {
         title: const Text('Scan QR Code'),
         actions: [
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: controller.torchState,
+            icon: ValueListenableBuilder<MobileScannerState>(
+              valueListenable: controller,
               builder: (context, state, child) {
-                switch (state) {
+                switch (state.torchState) {
                   case TorchState.off:
                     return const Icon(Icons.flash_off);
                   case TorchState.on:
                     return const Icon(Icons.flash_on, color: Colors.yellow);
+                  default:
+                    return const Icon(Icons.flash_off);
                 }
               },
             ),
@@ -114,20 +107,17 @@ class _QRScannerPageState extends State<QRScannerPage> {
               ),
             ),
           ),
-          if (_isProcessing)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
+          if (_isProcessing) const Center(child: CircularProgressIndicator()),
           // Zoom Slider
           Positioned(
             bottom: 40,
             left: 20,
             right: 20,
-            child: ValueListenableBuilder(
-              valueListenable: controller.zoomScaleState,
-              builder: (context, zoom, child) {
+            child: ValueListenableBuilder<MobileScannerState>(
+              valueListenable: controller,
+              builder: (context, state, child) {
                 return Slider(
-                  value: zoom,
+                  value: state.zoomScale,
                   onChanged: (value) => controller.setZoomScale(value),
                 );
               },
